@@ -1,0 +1,16 @@
+# Local and user-specific files
+config.json
+recordings/
+logs/
+*.log
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.DS_Store
+Thumbs.db
+
+# Build output and packaged installers
+dist/
+build/
+*.spec

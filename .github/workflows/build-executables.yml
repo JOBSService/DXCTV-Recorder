@@ -1,0 +1,31 @@
+name: Build executables
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest   # DXCTVRecorder-Windows-x64.exe
+          - os: ubuntu-22.04     # DXCTVRecorder-Linux-x64 (glibc 2.35+)
+          - os: ubuntu-22.04-arm # DXCTVRecorder-Linux-arm64 (Raspberry Pi OS 64-bit)
+          - os: macos-14         # DXCTVRecorder-macOS-arm64 (Apple silicon)
+          - os: macos-13         # DXCTVRecorder-macOS-x64 (Intel)
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install pyinstaller==6.11.1
+      - run: python build-executables.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: executable-${{ matrix.os }}
+          path: dist/executables/DXCTVRecorder-*
+          if-no-files-found: error
