@@ -60,6 +60,12 @@ with open(path, "wb") as f:
     plistlib.dump(plist, f)
 PY
 
+# Remove launch agents installed by earlier versions under a different label.
+for legacy in "$HOME/Library/LaunchAgents/"*.dxctv-recorder.plist; do
+  [[ -f "$legacy" ]] || continue
+  launchctl bootout "gui/$(id -u)" "$legacy" >/dev/null 2>&1 || true
+  rm -f "$legacy"
+done
 launchctl bootout "gui/$(id -u)" "$PLIST_PATH" >/dev/null 2>&1 || true
 launchctl bootstrap "gui/$(id -u)" "$PLIST_PATH"
 launchctl enable "gui/$(id -u)/dxctv-recorder"
