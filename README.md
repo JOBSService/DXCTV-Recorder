@@ -1,78 +1,207 @@
 # DXCTV Recorder
 
-For the full setup and step-by-step operating instructions, see [`DXCTVRecorder_User_Guide.md`](DXCTVRecorder_User_Guide.md).
+A lightweight, self-hosted 24/7 recorder for **TP-Link Tapo** cameras. DXCTV Recorder captures each camera's RTSP stream as MP4 segments on your own computer and serves a local browser page for setup, live view, and playback. There is no cloud service and no subscription.
 
-A small Python recorder for Tapo cameras. Add only the cameras you want to use in its local browser setup page. It records RTSP streams as MP4 segments on this computer and provides a local browser page for status, live view, and playback. The installer package includes a Windows self-extracting setup executable and executable setup commands for macOS and systemd-based Linux, including Ubuntu and Raspberry Pi OS.
+> **Note:** This is an independent project. It is not affiliated with or endorsed by TP-Link.
 
-Use `DXCTVRecorder-Windows-x64-Setup.exe` on Windows, `DXCTVRecorder-macOS-Installer.zip` on macOS, or `DXCTVRecorder-Ubuntu-Linux-Installer.zip` on Ubuntu/Linux. `DXCTVRecorder-Installers.zip` contains all platform options.
+## Contents
+
+- [Features](#features)
+- [How it works](#how-it-works)
+- [Requirements](#requirements)
+- [Quick start](#quick-start)
+- [Installation](#installation)
+- [Using the web client](#using-the-web-client)
+- [Standalone executables](#standalone-executables)
+- [Building from source](#building-from-source)
+- [Security and privacy](#security-and-privacy)
+- [Limitations](#limitations)
+- [Troubleshooting](#troubleshooting)
+- [Project structure](#project-structure)
+- [Contributing](#contributing)
+
+For complete step-by-step operating instructions, see the [User Guide](DXCTVRecorder_User_Guide.md).
+
+## Features
+
+- **Continuous recording** of multiple Tapo cameras to MP4 segments with a configurable segment length.
+- **Local web client** at `http://127.0.0.1:8765` for camera setup, status, live view, and playback.
+- **Live view** with 1, 2, 3 or 4 panel layouts and full-screen mode.
+- **Recordings browser** organised by camera and date.
+- **Automatic retention cleanup** that keeps 30, 60 or 90 days of footage.
+- **Runs as a background service** on Windows (Windows service), macOS (`launchd`), and Linux (systemd user service), including Raspberry Pi OS.
+- **Standalone single-file executables** that run without Python installed.
+- No code editing: cameras, storage folder and port are all set in the browser.
+
+## How it works
+
+```
+Tapo camera(s) ──RTSP──▶ FFmpeg (per camera) ──▶ recordings/<camera>/<date>/*.mp4
+                                   ▲
+                       recorder.py (service)
+                                   │
+                    Local web client (127.0.0.1:8765)
+```
+
+`recorder.py` supervises one FFmpeg process per camera, restarts streams that drop, and serves the web client. Settings are stored in a local `config.json`.
 
 ## Requirements
 
-- Python 3.10 or later and FFmpeg installed on the target computer. The install scripts detect both and configure the FFmpeg path, but do not download or install those prerequisites.
-- Windows 10 or 11, macOS with `launchd`, or Linux with a systemd user service. Linux ARM64 systems such as Raspberry Pi OS are supported when Python and FFmpeg are available for that system.
-- Each camera and this computer connected to the same home network
+| Component | Requirement |
+|-----------|-------------|
+| OS | Windows 10/11, macOS with `launchd`, or Linux with systemd (Ubuntu, Debian, Raspberry Pi OS, and others) |
+| Python | 3.10 or later (not needed with the [standalone executables](#standalone-executables)) |
+| FFmpeg | Installed and available on `PATH` |
+| Network | The cameras and the recording computer on the same local network |
+| Cameras | Tapo models whose firmware exposes **Camera Account** (RTSP/ONVIF), for example C200, C500 and C510W |
 
-## Configure the cameras
+The installers detect Python and FFmpeg but do not download or install them.
 
-1. In the Tapo app, open each camera's settings and enable **Camera Account** under **Advanced Settings** (menu wording may vary by app version). Create a dedicated username and password for RTSP/ONVIF access. This is separate from your TP-Link ID.
-2. Find each camera's local IP address in its Device Info or your router's connected-device list. Reserve those addresses in the router if possible so they do not change.
-3. Install Python 3 and FFmpeg for your operating system. Confirm `python3 --version` and `ffmpeg -version` work (on Windows, use `python --version`).
-4. Run the installer for your operating system below, then open the local web client at `http://127.0.0.1:8765` on the recording computer.
-5. Use **Camera and storage setup** in the browser page. Select **Add camera** for each camera you want to connect, then enter its name, IP address, and Camera Account username/password. Use **Browse…** to navigate this computer's drives and select a recording folder, then set the segment length and web client port. Remove any camera you no longer want. Click **Save and apply**; configured camera recording restarts using the saved settings. If you change the port, the browser moves to the new local address automatically. You do not need to edit Python code or camera URLs by hand.
+## Quick start
 
-Recordings are saved under `recordings/<camera>/<date>/`. In the **Recordings** tab, select a camera and then choose one of its available dates to see that day's completed video files. Keep the PC powered on and prevent it from sleeping for 24/7 recording.
+1. **Enable RTSP on each camera.** In the Tapo app, open the camera's settings, then go to **Advanced Settings → Camera Account** and create a dedicated username and password. This is separate from your TP-Link ID.
+2. **Find each camera's IP address** in Device Info or in your router's client list. Reserve those addresses in the router so they do not change.
+3. **Install Python 3 and FFmpeg.** Confirm that `python3 --version` (or `python --version` on Windows) and `ffmpeg -version` both work.
+4. **Run the installer** for your OS (see [Installation](#installation)).
+5. **Open** `http://127.0.0.1:8765`, choose **Add camera**, enter the camera name, IP address and Camera Account credentials, pick a recordings folder, and click **Save and apply**.
 
-The **Live View** tab opens with the first configured camera. Choose **1**, **2**, **3**, or **4** panels and select cameras from each panel's dropdown. The layouts use a full-height view for one or two cameras, a large panel beside two stacked panels for three, and a 2×2 grid for four. Use **Full screen** to enlarge the display. Preview uses each camera's standard-quality `/stream2` feed while the recorder continues saving the configured stream. Camera stream availability can depend on other Tapo app views and storage features; see the [TP-Link RTSP guide](https://www.tp-link.com/us/support/faq/2680/).
+## Installation
 
-In **Settings → Storage and recording**, choose to keep recordings for **30, 60, or 90 days**. Cleanup removes MP4 files older than the selected period and runs at service start, once daily, and after changing the retention setting.
+The installer packages are built with `build-installer-package.py` (see [Building from source](#building-from-source)). When releases are published, they are attached to the repository's Releases page.
 
-## Install on Windows
+| Platform | Package |
+|----------|---------|
+| Windows | `DXCTVRecorder-Windows-x64-Setup.exe` |
+| macOS | `DXCTVRecorder-macOS-Installer.zip` |
+| Ubuntu / Linux / Raspberry Pi OS | `DXCTVRecorder-Ubuntu-Linux-Installer.zip` |
+| All platforms | `DXCTVRecorder-Installers.zip` |
 
-1. Extract the complete folder to a location you can access.
-2. Double-click `DXCTVRecorder-Windows-x64-Setup.exe` and approve the Windows administrator prompt. Setup installs the **DXCTV Recorder** Windows service, preserves existing settings and recordings, and starts the service immediately and automatically with Windows, including before you sign in.
-3. Open the web client separately at `http://127.0.0.1:8765` or use the **DXCTV Recorder** desktop shortcut. The browser is only the client; the recorder service keeps running without it.
-4. The service runs as **LocalSystem**. Use the browser-based folder selector to choose storage; the standard Windows folder dialog cannot appear from a background service. Use local drive paths rather than mapped network drive letters.
-5. To remove the service, uninstall **DXCTV Recorder** from Windows Installed apps. Settings and recordings are retained.
+Every installer keeps your existing settings and recordings when upgrading.
 
-Windows Installed apps lists the publisher as **DXCTV-Recorder**. Python and FFmpeg must remain installed on the PC. Setup downloads the WinSW service wrapper from its official GitHub release and verifies its SHA-256 checksum before registering the service.
+### Windows
 
-## Install on macOS
+1. Run `DXCTVRecorder-Windows-x64-Setup.exe` and approve the administrator prompt.
+2. Setup installs the **DXCTV Recorder** Windows service. The service starts immediately and then starts with Windows, before anyone signs in.
+3. Open `http://127.0.0.1:8765` or use the **DXCTV Recorder** desktop shortcut.
+4. To uninstall, remove **DXCTV Recorder** from **Settings → Apps → Installed apps**. Settings and recordings are kept.
 
-1. Extract the complete `DXCTVRecorder` folder from the ZIP package.
-2. Double-click `install-recorder-macos.command`. It installs a per-user `launchd` service, preserves existing settings and recordings, starts the service, and opens the browser page.
-3. The service starts when this macOS user signs in. Run `~/Library/Application Support/DXCTVRecorder/uninstall-recorder.command` to remove the service; settings and recordings are kept.
+Notes:
+- The service runs as **LocalSystem**. Choose the recordings folder with the browser's folder picker, and use local drive paths instead of mapped network drive letters.
+- Setup downloads the [WinSW](https://github.com/winsw/winsw) service wrapper from its official GitHub release and verifies its SHA-256 checksum.
+- The setup executable is not code-signed, so Windows may show an unknown-publisher warning.
 
-Python 3 and FFmpeg must already be installed and available in the Terminal `PATH`. macOS may ask you to confirm running a downloaded command file.
+### macOS
 
-## Install on Linux and Raspberry Pi OS
+1. Extract the `DXCTVRecorder` folder from the ZIP.
+2. Double-click `install-recorder-macos.command`. This installs a per-user `launchd` service, starts it and opens the browser page.
+3. The service starts when this user signs in.
+4. To uninstall, run:
+   ```bash
+   ~/Library/Application\ Support/DXCTVRecorder/uninstall-recorder.command
+   ```
 
-1. Extract the complete `DXCTVRecorder` folder from the ZIP package.
-2. On Ubuntu or another Linux desktop, open a terminal in the extracted folder and run `./install-recorder-linux.sh`. If the executable bit was not preserved, run `bash install-recorder-linux.sh` instead.
-3. The installer creates and starts a systemd user service, preserves existing settings and recordings, and opens the browser page when a desktop browser is available. It may ask for your password to enable the service at boot before sign-in; if that step is skipped, the service starts when you sign in.
-4. Run `bash "${XDG_DATA_HOME:-$HOME/.local/share}/dxctv-recorder/uninstall-recorder.sh"` to remove the service while keeping settings and recordings.
+### Linux and Raspberry Pi OS
 
-Python 3, FFmpeg, and a systemd user session must be available. The installer does not install OS packages automatically. On headless Raspberry Pi systems, open `http://127.0.0.1:8765` from a browser on the Pi; this first version listens on the local computer only.
+1. Extract the `DXCTVRecorder` folder from the ZIP.
+2. In a terminal inside that folder, run:
+   ```bash
+   ./install-recorder-linux.sh    # or: bash install-recorder-linux.sh
+   ```
+3. The installer creates and starts a systemd **user** service. It may ask for `sudo` to enable `loginctl linger` so the service starts at boot; if you skip this, the service starts when you sign in.
+4. To uninstall:
+   ```bash
+   bash "${XDG_DATA_HOME:-$HOME/.local/share}/dxctv-recorder/uninstall-recorder.sh"
+   ```
 
-## Standalone executables (no Python needed)
+On a headless Raspberry Pi, open `http://127.0.0.1:8765` from a browser on the Pi itself, because the web client only listens locally.
 
-`dist/executables/` holds single-file builds of the recorder that run without Python: `DXCTVRecorder-Windows-x64.exe`, `DXCTVRecorder-Linux-x64`, and the macOS builds. FFmpeg must still be installed and on `PATH` (or set `ffmpeg_path` in `config.json`).
+## Using the web client
 
-Put the executable in its own folder and run it. On first run it creates `config.json` and `recordings/` beside itself; set the `DXCTV_HOME` environment variable to use a different data folder. Then open `http://127.0.0.1:8765`. The service installers above still run `recorder.py` with Python.
+- **Settings → Camera and storage setup:** add, edit or remove cameras; choose the recordings folder with **Browse…**; set the segment length, retention period (30/60/90 days) and web client port. If you leave a camera's password blank while editing, the saved password is kept.
+- **Live View:** shows 1 to 4 panels with full-screen support. Preview uses each camera's lower-bandwidth `/stream2` feed while recording continues on the configured stream (`/stream1` is high quality, `/stream2` is standard).
+- **Recordings:** select a camera and a date to play that day's completed MP4 files. Files are stored under `recordings/<camera>/<date>/`.
 
-To rebuild for the current OS, run `python -m pip install pyinstaller` and then `python build-executables.py`. PyInstaller cannot cross-compile, so macOS builds must be made on a Mac or by the GitHub Actions workflow in `.github/workflows/build-executables.yml`, which builds Windows, Linux x64/ARM64, and macOS Intel/Apple silicon. The Linux x64 build here targets glibc 2.34+ (Ubuntu 22.04+, Debian 12, Raspberry Pi OS Bookworm).
+For uninterrupted 24/7 recording, keep the computer powered on and stop it from sleeping.
 
-## Privacy and limits
+## Standalone executables
 
-- This first version listens only on `127.0.0.1`, so the browser page is accessible from the recording PC only. It does not expose the cameras or app to the internet.
-- Keep camera passwords private. `config.json` contains them in plain text; restrict access to this folder.
-- OneDrive can sync the `recordings` folder, but continuous video may use substantial storage and upload bandwidth. OneDrive is not configured automatically.
-- The app does not yet provide user accounts, remote access, motion detection, or NAS storage. NAS support can be implemented by changing the recordings folder to a mounted NAS path.
-- Tapo Care, camera microSD/Hub storage, and RTSP/NVR recording have camera stream-resource limitations. Check TP-Link's current guidance before enabling all storage modes together.
+Single-file builds that run **without Python**:
+
+| File | Target |
+|------|--------|
+| `DXCTVRecorder-Windows-x64.exe` | Windows x64 |
+| `DXCTVRecorder-Linux-x64` | Linux x64 (glibc 2.35+: Ubuntu 22.04+, Debian 12) |
+| `DXCTVRecorder-Linux-arm64` | Raspberry Pi OS 64-bit (Bookworm) |
+| `DXCTVRecorder-macOS-arm64` | macOS on Apple silicon |
+| `DXCTVRecorder-macOS-x64` | macOS on Intel |
+
+Put the executable in its own folder and run it. On first run it creates `config.json` and `recordings/` next to itself. To keep data somewhere else, set the `DXCTV_HOME` environment variable. FFmpeg still has to be on `PATH`, or you can set `ffmpeg_path` in `config.json`.
+
+The service installers above run `recorder.py` with Python. They do not use these executables.
+
+## Building from source
+
+```bash
+git clone https://github.com/JOBSService/DXCTV-Recorder.git
+cd DXCTV-Recorder
+
+# Run directly (requires Python 3.10+ and FFmpeg)
+python recorder.py
+
+# Build a standalone executable for the current OS
+python -m pip install pyinstaller
+python build-executables.py          # output: dist/executables/
+
+# Build the installer packages
+python build-installer-package.py    # output: dist/
+```
+
+PyInstaller cannot cross-compile. The GitHub Actions workflow [`.github/workflows/build-executables.yml`](.github/workflows/build-executables.yml) builds every platform. Run it manually or push a `v*` tag to start it.
+
+## Security and privacy
+
+- The web client binds to **`127.0.0.1` only**, so it cannot be reached from other devices or the internet.
+- Camera credentials are entered in the web client and saved **in plain text** in the local `config.json`. Restrict access to the application data folder, and never commit, email or share `config.json` or an unredacted backup.
+- RTSP credentials are redacted from FFmpeg log output.
+- `config.json`, recordings, logs and build output are excluded by `.gitignore`, and installer packages never include them.
+- Use a dedicated Tapo **Camera Account**. Never enter your TP-Link ID password.
+
+If you find a security issue, please report it privately through GitHub's **Security → Report a vulnerability** instead of opening a public issue.
+
+## Limitations
+
+- Accessible from the local machine only. There is no remote access or user accounts yet.
+- No motion detection.
+- No native NAS integration. Pointing the recordings folder at a mounted NAS path works.
+- Cloud sync (for example OneDrive) of the recordings folder is possible but can use a lot of storage and upload bandwidth.
+- Tapo Care, on-camera microSD/Hub storage and RTSP share the camera's stream resources. Check TP-Link's guidance before enabling all of them together.
 
 ## Troubleshooting
 
-- **FFmpeg not found or access denied:** install a working FFmpeg build and make sure `ffmpeg -version` succeeds for the same Windows account running the recorder.
-- **Connecting/reconnecting:** check the camera IP, Camera Account credentials, same-network connection, and RTSP path. Try the lower bandwidth `/stream2` path if upload or Wi-Fi capacity is limited.
-- **No video in browser:** allow a few seconds for a segment to finish and appear; the app lists completed MP4 files.
+| Problem | What to check |
+|---------|---------------|
+| FFmpeg not found or access denied | Make sure `ffmpeg -version` works for the account that runs the recorder, or set `ffmpeg_path` in `config.json`. |
+| Camera stuck connecting or reconnecting | Check the camera IP, the Camera Account credentials, that the camera is on the same network, and the RTSP path. Try `/stream2` on weak Wi-Fi. |
+| RTSP 401 Unauthorized | Re-enter the Camera Account username and password. This is not the TP-Link ID. |
+| Ping works but the camera shows as unreachable | Ping does not test RTSP. Confirm that Camera Account is enabled and that the stream is not taken by other Tapo features. |
+| No video in the Recordings tab | Only completed segments are listed. Wait for the current segment to finish. |
 
-TP-Link's RTSP/ONVIF instructions: https://www.tp-link.com/us/support/faq/2680/
+For more help, see the [User Guide](DXCTVRecorder_User_Guide.md) and [TP-Link's RTSP/ONVIF FAQ](https://www.tp-link.com/us/support/faq/2680/).
+
+## Project structure
+
+```
+recorder.py                      Recorder service and local web client
+build-executables.py             PyInstaller single-file build
+build-installer-package.py       Builds the Windows/macOS/Linux installer packages
+install-recorder.ps1             Windows service installer
+install-recorder-macos.command   macOS launchd installer
+install-recorder-linux.sh        Linux systemd user-service installer
+uninstall-recorder-*.{sh,command}
+DXCTVRecorder_User_Guide.md      Full end-user guide
+.github/workflows/               CI builds for all platforms
+```
+
+## Contributing
+
+Issues and pull requests are welcome. When you report a problem, include your OS, camera model and firmware, and the relevant log lines, **with any credentials or RTSP URLs removed**.
