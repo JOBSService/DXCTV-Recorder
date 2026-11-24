@@ -7,6 +7,7 @@ A lightweight, self-hosted 24/7 recorder for **TP-Link Tapo** cameras. DXCTV Rec
 ## Contents
 
 - [Features](#features)
+- [Tested devices](#tested-devices)
 - [How it works](#how-it-works)
 - [Requirements](#requirements)
 - [Quick start](#quick-start)
@@ -25,14 +26,44 @@ For complete step-by-step operating instructions, see the [User Guide](DXCTVReco
 
 ## Features
 
-- **Continuous recording** of multiple Tapo cameras to MP4 segments with a configurable segment length.
-- **Local web client** at `http://127.0.0.1:8765` for camera setup, status, live view, and playback.
-- **Live view** with 1, 2, 3 or 4 panel layouts and full-screen mode.
-- **Recordings browser** organised by camera and date.
-- **Automatic retention cleanup** that keeps 30, 60 or 90 days of footage.
-- **Runs as a background service** on Windows (Windows service), macOS (`launchd`), and Linux (systemd user service), including Raspberry Pi OS.
+### Recording
+
+- **24/7 recording** from several cameras at the same time, with one FFmpeg process per camera.
+- **No quality loss and low CPU use.** Video is saved as it arrives, without re-encoding. Audio is saved as AAC when the camera provides it.
+- **MP4 segments** with a configurable length, saved by camera and date under `recordings/<camera>/<date>/`.
+- **Choice of stream:** `/stream1` for high quality or `/stream2` for standard quality and lower bandwidth.
+- **Automatic reconnect.** The recorder checks each camera's RTSP port before connecting, uses RTSP over TCP for reliability, and keeps retrying if a camera drops or goes offline.
+- **Automatic retention cleanup** that keeps 30, 60 or 90 days of footage. Cleanup runs when the service starts, once a day, and whenever the setting changes.
+
+### Web client
+
+- **Browser-based setup** at `http://127.0.0.1:8765`. Cameras, storage folder, segment length, retention and port are all set in the browser, with no code or config editing.
+- **Per-camera status**, including connecting, recording, RTSP unavailable and storage errors, with a hint for fixing each problem.
+- **Live view** with 1, 2, 3 or 4 panel layouts, a camera picker for each panel, and full-screen mode.
+- **Recordings browser** that lets you pick a camera and a date and play the MP4 files in the browser.
+- **Built-in folder browser** for choosing where recordings are stored, including other drives.
+
+### Platform and deployment
+
+- **Runs as a background service** on Windows (a Windows service that starts at boot), macOS (`launchd`), and Linux (a systemd user service), including Raspberry Pi OS.
+- **One-click installers** for each platform that keep existing settings and recordings when you upgrade.
 - **Standalone single-file executables** that run without Python installed.
-- No code editing: cameras, storage folder and port are all set in the browser.
+
+### Security
+
+- **Local only.** The web client binds to `127.0.0.1` and rejects requests for any other host name, which protects against DNS rebinding.
+- **Credentials kept out of logs.** RTSP usernames and passwords are redacted from log output.
+- **Passwords never sent back to the browser.** Saved camera passwords are not shown or returned to the web page.
+
+## Tested devices
+
+DXCTV Recorder has been tested with **TP-Link Tapo cameras over RTSP**, using the camera's built-in **Camera Account**.
+
+| Brand | Connection | Stream paths | Status |
+|-------|------------|--------------|--------|
+| TP-Link Tapo | RTSP (port 554, Camera Account) | `/stream1` (HQ), `/stream2` (SD) | ✅ Tested |
+
+Other RTSP cameras may work but have not been tested yet. If you try DXCTV Recorder with another camera model or brand, please open an issue with the model, firmware version and result so it can be added to this list.
 
 ## How it works
 
