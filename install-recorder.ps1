@@ -235,10 +235,11 @@ if (-not $service -or $service.Status -ne 'Running') {
 }
 Write-Host 'DXCTV Recorder service is running.'
 
-# Publish DXCTVRecorder in Windows Installed apps with its uninstall command.
+# Publish DXCTVRecorder in Windows Installed apps with its publisher and uninstall command.
 New-Item -Path $uninstallKey -Force | Out-Null
 $uninstallCommand = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "{0}" -Uninstall' -f (Join-Path $appDir 'install-recorder.ps1')
 New-ItemProperty -Path $uninstallKey -Name 'DisplayName' -Value 'DXCTV Recorder' -PropertyType String -Force | Out-Null
+New-ItemProperty -Path $uninstallKey -Name 'Publisher' -Value 'DXCTV-Recorder' -PropertyType String -Force | Out-Null
 New-ItemProperty -Path $uninstallKey -Name 'DisplayVersion' -Value '1.0.0' -PropertyType String -Force | Out-Null
 New-ItemProperty -Path $uninstallKey -Name 'InstallLocation' -Value $appDir -PropertyType String -Force | Out-Null
 New-ItemProperty -Path $uninstallKey -Name 'UninstallString' -Value $uninstallCommand -PropertyType String -Force | Out-Null
@@ -258,6 +259,7 @@ $shortcut.Description = 'Open DXCTV Recorder web client'
 $shortcut.Save()
 
 Write-Host 'DXCTV Recorder is installed as an automatic Windows service.'
+Write-Host 'Publisher: DXCTV-Recorder.'
 Write-Host 'It is running now and starts with Windows, including before you sign in.'
 Write-Host "Open http://127.0.0.1:$port/ or use the DXCTV Recorder desktop shortcut."
 Write-Host 'The service runs as LocalSystem. Use the browser folder selector to choose storage.'
