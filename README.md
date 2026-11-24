@@ -19,6 +19,7 @@ A lightweight, self-hosted 24/7 recorder for **TP-Link Tapo** cameras. DXCTV Rec
 - [Troubleshooting](#troubleshooting)
 - [Project structure](#project-structure)
 - [Contributing](#contributing)
+- [License](#license)
 
 For complete step-by-step operating instructions, see the [User Guide](DXCTVRecorder_User_Guide.md).
 
@@ -205,3 +206,7 @@ DXCTVRecorder_User_Guide.md      Full end-user guide
 ## Contributing
 
 Issues and pull requests are welcome. When you report a problem, include your OS, camera model and firmware, and the relevant log lines, **with any credentials or RTSP URLs removed**.
+
+## License
+
+Released under the [MIT License](LICENSE).
